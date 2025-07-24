@@ -1,0 +1,103 @@
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures, LabelEncoder
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+
+df = pd.read_csv("xAPI-Edu-Data.csv")
+
+# Data Preprocessing
+# Encode categorical target variable ('Class')
+le = LabelEncoder()
+df['Class_encoded'] = le.fit_transform(df['Class'])
+
+# Select initial features (all numerical columns)
+numerical_features = ['raisedhands', 'VisITedResources', 'AnnouncementsView', 'Discussion']
+X = df[numerical_features]
+y = df['Class_encoded']
+
+# Split data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+## **1. Linear Regression (Baseline)**
+print("\n" + "="*50)
+print("BASELINE: LINEAR REGRESSION")
+print("="*50)
+
+# Train model
+lin_reg = LinearRegression()
+lin_reg.fit(X_train, y_train)
+
+# Evaluate
+y_pred_lin = lin_reg.predict(X_test)
+print(f"MAE: {mean_absolute_error(y_test, y_pred_lin):.3f}")
+print(f"R²: {r2_score(y_test, y_pred_lin):.3f}")
+
+## **2. Polynomial Regression**
+print("\n" + "="*50)
+print("BONUS 1: POLYNOMIAL REGRESSION (Degree=2)")
+print("="*50)
+
+# Create polynomial features
+poly = PolynomialFeatures(degree=2)
+X_poly = poly.fit_transform(X)
+
+# Split polynomial features
+X_train_poly, X_test_poly = poly.transform(X_train), poly.transform(X_test)
+
+# Train model
+poly_reg = LinearRegression()
+poly_reg.fit(X_train_poly, y_train)
+
+# Evaluate
+y_pred_poly = poly_reg.predict(X_test_poly)
+print(f"MAE: {mean_absolute_error(y_test, y_pred_poly):.3f}")
+print(f"R²: {r2_score(y_test, y_pred_poly):.3f}")
+
+## **3. Feature Combination Experiments**
+print("\n" + "="*50)
+print("BONUS 2: FEATURE COMBINATION EXPERIMENTS")
+print("="*50)
+
+# Experiment 1: Only top 2 features (based on baseline coefficients)
+print("\nExperiment 1: Only 'raisedhands' and 'VisITedResources'")
+X_exp1 = df[['raisedhands', 'VisITedResources']]
+X_train_exp1, X_test_exp1 = train_test_split(X_exp1, test_size=0.2, random_state=42)
+
+model_exp1 = LinearRegression()
+model_exp1.fit(X_train_exp1, y_train)
+y_pred_exp1 = model_exp1.predict(X_test_exp1)
+print(f"MAE: {mean_absolute_error(y_test, y_pred_exp1):.3f}")
+print(f"R²: {r2_score(y_test, y_pred_exp1):.3f}")
+
+# Experiment 2: Add squared terms manually
+print("\nExperiment 2: Add squared terms for key features")
+df['raisedhands_sq'] = df['raisedhands']**2
+df['Discussion_sq'] = df['Discussion']**2
+X_exp2 = df[['raisedhands', 'VisITedResources', 'Discussion', 'raisedhands_sq', 'Discussion_sq']]
+
+X_train_exp2, X_test_exp2 = train_test_split(X_exp2, test_size=0.2, random_state=42)
+model_exp2 = LinearRegression()
+model_exp2.fit(X_train_exp2, y_train)
+y_pred_exp2 = model_exp2.predict(X_test_exp2)
+print(f"MAE: {mean_absolute_error(y_test, y_pred_exp2):.3f}")
+print(f"R²: {r2_score(y_test, y_pred_exp2):.3f}")
+
+## **Visualization: Compare Model Performance**
+models = ['Linear', 'Polynomial', 'Feature Exp1', 'Feature Exp2']
+mae_scores = [
+    mean_absolute_error(y_test, y_pred_lin),
+    mean_absolute_error(y_test, y_pred_poly),
+    mean_absolute_error(y_test, y_pred_exp1),
+    mean_absolute_error(y_test, y_pred_exp2)
+]
+
+plt.figure(figsize=(10, 5))
+plt.bar(models, mae_scores, color=['blue', 'orange', 'green', 'red'])
+plt.title('Model Comparison (Lower MAE is Better)')
+plt.ylabel('Mean Absolute Error')
+plt.show()
